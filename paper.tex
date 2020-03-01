@@ -62,7 +62,6 @@ CentraleSupélec\\
 
 %%%%%%%%% ABSTRACT
 % \begin{abstract}    
-%    TODO abstract
 %    The ABSTRACT is to be in fully-justified italicized text, at the top
 %    of the left-hand column, below the author and affiliation
 %    information. Use the word ``Abstract'' as the title, in 12-point
@@ -73,9 +72,11 @@ CentraleSupélec\\
 %%%%%%%%% BODY TEXT
 \section{Introduction}
 
-In this study we focus on the classification of drawings realized by participants of the game Quickdraw \cite{GoogleQuickdraw}. Quickdraw is a game release by Google that prompts the participant with the name of an item  (for instance drums), the participant then has 20 seconds to draw it and make a neural network guess the correct item name. Thanks to this game, the Quickdraw team collected a lot of annotated images and made them available publicly, there are 345 different items and each has at least $100,000$ samples.
+In this study we focus on the classification of drawings realized by participants of the game Quickdraw \cite{GoogleQuickdraw}. Quickdraw is a game released by Google that prompts the participant with the name of an item  (for instance drums), the participant then has 20 seconds to draw it and make a neural network guess the correct item name. Thanks to this game, the Quickdraw team collected a lot of annotated images and made them available publicly, there are 345 different items and each has at least $100,000$ samples.
 
-We study different classifiers using different forms of data that range from strokes data to images, all the code used in this study can be found \href{https://github.com/cs-deep-quickdraw/notebooks}{here: https://github.com/cs-deep-quickdraw/notebooks}.
+We study different classifiers using different forms of data that range from strokes data to images. All the code used in this study can be found \href{https://github.com/cs-deep-quickdraw/notebooks}{here: https://github.com/cs-deep-quickdraw/notebooks}.
+
+Our goal is to get the best possible accuracy on 100 different classes of drawings.
 
 %-------------------------------------------------------------------------
 
@@ -83,9 +84,16 @@ We study different classifiers using different forms of data that range from str
 %------------------------------------------------------------------------
 \section{Prior Work}
 
+Many different projects arose from the Quickdraw dataset \cite{GoogleQuickdraw}. Some are data analyses, others are artistic projects, often based on image generation. However, we are especially interested in projects that use this dataset for classification as this is the problem we want to solve in this study.
+
+Fortunately, Google Research created a competition on Kaggle for classifying drawings from this dataset \cite{KaggleCompetition}. The data is available as strokes from the drawings. Most of the solutions for this competition use two different approaches: a LSTM trained on the strokes \cite{KaggleLSTM} or a CNN trained on images generated from the strokes \cite{KaggleCNN} \cite{KaggleMobileNet}. Big models such as ResNet34 \cite{KaggleResNet} and MobileNet \cite{KaggleMobileNet} perform well on this classification task. The best solutions use ensemble methods with their best models \cite{KaggleFirstPlace} (and even snapshot ensemble methods to have more models in the ensemble \cite{KaggleFifthPlace}). The authors of the first place solution give a list of good CNN architectures to try for this problem: "resnet18, resnet34, resnet50, resnet101, resnet152, resnext50, resnext101, densenet121, densenet201, vgg11, pnasnet, incresnet, polynet, nasnetmobile, senet154, seresnet50, seresnext50, seresnext101". \cite{KaggleFirstPlace}
+
+It should be noted that the dataset we are using also provides data in another format than the one used in the competition so we can even try other approaches.
 
 %------------------------------------------------------------------------
 \section{Approaches}
+
+In this section we detail, from a theoretical perspective, the three approaches that we investigate to obtain the best possible performance on our classification task.
 
 %------------------------------------------------------------------------
 \subsection{\rnnTitle{}}
@@ -120,9 +128,9 @@ This dataset is available in \texttt{.bin} format (raw bytes) and \texttt{.ndjso
 
 A number of fields are available per image (\texttt{key\_id}, \texttt{country\_code}, \texttt{timestamp}) however we will solely focus on the strokes. In this dataset a stroke is represented by a list of ($x$, $y$) coordinates on the canvas. Whenever the participant lifts the pencil, the stroke ends.
 
-So for each image, we have an associated list of strokes, to encode the information of "lifting the pencil" we decide to use the same solution as in the Tensorflow's RNNs tutorial \cite{TensorflowTutorial}: adding a third value to the coordinates to indicate if the current point is the end of a stroke or not. Hence the list of list of ($x$, $y$) coordinates becomes a simple list of ($x$, $y$, $last$) tuples where $last \in \{0, 1\}$ indicates if yes or no the current point is the end of a stroke. We also normalize the coordinates within each image to have values in $[0, 1]$ for $x$ and $y$.
+So for each image, we have an associated list of strokes. To encode the information of "lifting the pencil" we decide to use the same solution as in the Tensorflow's RNNs tutorial \cite{TensorflowTutorial}: adding a third value to the coordinates to indicate if the current point is the end of a stroke or not. Hence the list of list of ($x$, $y$) coordinates becomes a simple list of ($x$, $y$, $last$) tuples where $last \in \{0, 1\}$ indicates whether or not the current point is the end of a stroke. We also normalize the coordinates within each image to have values in $[0, 1]$ for $x$ and $y$.
 
-To exploit the fact that these strokes are sequential data, we decide to use Recurrent Neural Networks (RNNs) because they are very well suited for temporal/sequential data. More precisely, we will use Long short-term memory neural networks \cite{DBLP:journals/corr/GreffSKSS15} that are a specific type of RNNs which architectures are described on figure \ref{fig:lstm}, this architecture has the benefits of solving the vanishing gradient issue that sometimes raises when using RNNs and mitigates the exploding gradient problem without tackling it completely.
+To exploit the fact that these strokes are sequential data, we decide to use Recurrent Neural Networks (RNNs) because they are very well suited for temporal/sequential data. More precisely, we will use Long short-term memory neural networks \cite{DBLP:journals/corr/GreffSKSS15} that are a specific type of RNNs which architectures are described on figure \ref{fig:lstm}. This architecture has the benefits of solving the vanishing gradient issue that sometimes raises when using RNNs and mitigates the exploding gradient problem without tackling it completely.
 
 
 
@@ -161,14 +169,21 @@ A CNN is a neural network with at least one convolution layer, \textit{i.e.} a l
 
 In this approach, we try different tried and proven image classification CNN models that happen to also be suitable for processing 28x28 images, namely ResNet18, ResNet34, and MobileNet.
 
-TODO expliquer ResNet
+ResNet is a special kind of CNN architecture introduced in 2015 \cite{he2016deep} that addresses the problem of vanishing gradients by using "skip connections" that connect one layer to another while jumping over some layers in between.
 
-TODO expliauer MobileNet
+MobileNet is a CNN architecture introduced in 2017 \cite{howard2017mobilenets} in order to improve the efficiency of convolutions for mobile vision applications, while keeping great performances. It uses "depthwise separable convolution", a special kind of convolution in two steps:
+
+\begin{itemize}
+    \item a depthwise convolution, where kernels are applied to a single channel (as opposed to classical convolution where kernels are applied simultaneously to all channels)
+    \item a pointwise convolution, where 1x1x3 kernels are applied to the output of the depthwise convolution to combine them into feature maps.
+\end{itemize}
+
+This kind of convolution uses much less operations than the classical convolution.
 
 %------------------------------------------------------------------------
 \subsection{\imgenTitle{}}
 
-The last approach we try is based on the observation that 28x28 is a rather small format for the type of drawing we study. We thus render the same simplified drawing in grayscale ourselves with \texttt{numpy} and \texttt{opencv} to work with greater resolutions.
+The last approach we try is based on the observation that 28x28 is a rather small format for the type of drawings we study. We thus render the same simplified drawings in grayscale ourselves with \texttt{numpy} and \texttt{opencv} to work with greater resolutions.
 
 Within a given memory envelope, increasing the size of the images is at the expense of the number of images we can store and on which we can learn. This is why we choose the still rather moderate resolutions of 64x64 and 96x96.
 
@@ -177,12 +192,12 @@ This newly generated dataset is used on the same models than for the 28x28 datas
 %------------------------------------------------------------------------
 \section{Experiments}
 
-TODO -> what do we investigate?
+In this section, we detail, comment, and interpret the results obtained for each one of the three approaches.
 
 %------------------------------------------------------------------------
 \subsection{Experimental protocols and performance measures}
 
-All the approaches are using the same test images: the first $20,000$ samples of each class. This is to be able to compare correctly the results that each approach yields. Moreover, the loss function used by each approach is also the same: the cross entropy loss, so the training losses could also be compared, however since we are not using the same training strategies for each approach (batch size, learning rate, optimizer, samples of training) we won't do any comparison on this.
+All the approaches are using the same test images: the first $20,000$ samples of each class. This is to be able to compare correctly the results that each approach yields. Moreover, the loss function used by each approach is also the same: the cross entropy loss, so the validation losses could also be compared, however since we are not using the same training strategies for each approach (batch size, learning rate, optimizer, samples of training) we won't do any comparison on this.
 
 %------------------------------------------------------------------------
 \subsection{\rnnTitle{}}
@@ -196,7 +211,7 @@ First, to be able to batch multiple \texttt{images} they need to have the same s
 \begin{table}[h]
     \centering
     \begin{tabular}{c|c|c|c|c}
-          & mean & p90 & p95 & p99 \\
+          & \textbf{Mean} & \textbf{p90} & \textbf{p95} & \textbf{p99} \\
           \hline
          values & 43 & 77 & 96 & 137
     \end{tabular}
@@ -280,17 +295,28 @@ The accuracy this last model reaches on the test dataset is $87.44\%$, we will n
 %------------------------------------------------------------------------
 \subsection{\cnnTitle{}}
 
-First, when classifying images such as the 28x28 grayscale bitmaps that we are using, it can be a good idea to try very simple models to have a baseline from which we can compare more complex models. This is why we first show the results of a logistic regression and a simple multi layer perceptron (MLP) trained for 40 epochs. The results are shown in figure TODO. The logistic regression achieves an accuracy of TODO and the MLP achieves an accuracy of 72.69\% on the validation set.
+In this subsection, we experiment several models to exploit the 28x28 grayscale bitmaps dataset.
+
+\subsubsection{Logistic Regression and Multi Layer Perceptron}
+
+First, when classifying images such as the 28x28 grayscale bitmaps that we are using, it can be a good idea to try very simple models to have a baseline from which we can compare more complex models. This is why we first show the results of a logistic regression trained for 20 epochs (this model converges very quickly) and a simple multi layer perceptron (MLP) trained for 40 epochs. The results are shown in figure \ref{fig:mlp_logistic}. The logistic regression achieves an accuracy of 28.84\% and the MLP achieves an accuracy of 72.69\% on the validation set.
 
 The MLP used for this baseline contains two hidden layers: one of 512 inputs and the other of 256 inputs. Activation functions are ReLU.
 
-TODO figure MLP et regression logistic
+\begin{figure}[h] 
+\centering
+\includegraphics[width=0.45\textwidth]{images/bitmaps_mlp.png}
+\caption{Results for a Logistic Regression and a MLP}
+\label{fig:mlp_logistic}
+\end{figure}
 
-The simple MLP already achieves a fairly good accuracy for this kind of task. Indeed there is a fair amount of classes and the data intuitively doesn't seem easy to exploit because drawings are more abstract than pictures and their quality can be quite different from one drawing to another (see \ref{fig:bitmap_drums}). Besides 28x28 bitmaps are small and grayscale. This is why we don't expect to obtain the same results as one can achieve on ImageNet.
+Without much surprise, a model as simple as the logistic regression performs poorly on this classification task. However, the simple MLP already achieves a fairly good accuracy for this kind of task. Indeed there is a fair amount of classes and the data intuitively doesn't seem easy to exploit because drawings are more abstract than pictures and their quality can be quite different from one drawing to another (see \ref{fig:bitmap_drums}). Besides 28x28 bitmaps are small and grayscale. This is why we don't expect to obtain the same results as one can achieve on ImageNet.
+
+\subsubsection{ResNet18, ResNet34, and MobileNet from scratch}
 
 Then, we train three tried and proven image classification CNN models from scratch: ResNet18, ResNet34, and MobileNet. These models expect an RGB image as the input (ideally its size should be 224x224). To process grayscale bitmaps, we just adapt the first convolutional layer of the models to take only one channel as their input instead of three. Of course, we also adapt the last fully connected layer of the classifier to have 100 outputs instead of 1000 (there are 1000 classes on ImageNet). Finally, it is possible to use these models with small 28x28 images because they all have an adaptive average pool layer before their classifier. The output of this layer doesn't depend on the input size.
 
-We train them for 20 epochs by using a Stochastic Gradient Descent (SGD) with a learning rate of 0.005 as the optimizer. The loss is measured by using Cross Entropy Loss. Results are shown in figure \ref{fig:cnn_scratch}. The models achieve an accuracy of, respectively, 83.08\%, 83.29\%, and 81.9\% on the validation set. However, while the ResNet models (over)fit the data pretty quickly, the MobileNet model clearly doesn't converge to its minimal generalization loss in less than 20 epochs so this model can most likely perform better if we train it longer.
+We train them for 20 epochs by using a Stochastic Gradient Descent (SGD) with a learning rate of 0.005 as the optimizer. The loss is measured by using Cross Entropy Loss. Results are shown in figure \ref{fig:cnn_scratch}. The models achieve an accuracy of, respectively, 83.08\%, 83.29\%, and 81.9\% on the validation set. However, while the ResNet models fit the data pretty quickly, the MobileNet model clearly doesn't converge to its minimal generalization loss in less than 20 epochs so this model can most likely perform better if we train it longer.
 
 \begin{figure}[h] 
 \centering
@@ -298,6 +324,8 @@ We train them for 20 epochs by using a Stochastic Gradient Descent (SGD) with a 
 \caption{Results for popular CNN models trained from scratch}
 \label{fig:cnn_scratch}
 \end{figure}
+
+\subsubsection{Transfer Learning from ResNet18, ResNet34, and MobileNet}
 
 The idea behind training these models from scratch is that transfer learning doesn't necessarily apply to our problem. Indeed, these models are pre-trained on ImageNet on a different classification task involving large RGB pictures. When trying to do simple transfer learning (only training the last fully connected layer of the model, a.k.a the classifier), we get extremely poor results that are not shown here.
 
@@ -316,6 +344,8 @@ The results of this approach are shown in figure \ref{fig:cnn_pretrained}. The p
 
 It should be noted that when the MobileNet model is trained longer (40 epochs here), it outperforms the ResNet18 and ResNet34 models on our problem. We don't train ResNet18 and ResNet34 for 40 epochs because their validation accuracy starts decreasing after only 9 to 13 epochs (and it would take too much time to wait for 40 epochs just to see how much the validation accuracy would decrease).
 
+\subsubsection{ResNet18 with a modified convolution layer}
+
 Finally, we try to adapt the ResNet18 architecture to better fit our problem. Clearly, MobileNet outperforms ResNet18 on this problem. One of the reasons could be the first convolutional layer of the architecture. Indeed, these layers are different:
 
 \begin{itemize}
@@ -325,7 +355,7 @@ Finally, we try to adapt the ResNet18 architecture to better fit our problem. Cl
 
 Having smaller kernels seems to particularly make sense for small 28x28 images. For this reason, we adapt the ResNet18 architecture by replacing its first convolutional layer by a layer with 64 output channels, 3x3 kernels, 2x2 stride, and 1x1 padding. Of course, we cannot use the pre-trained version of ResNet18 after changing the very first layer because the weights in the following layers no longer make any sense (trying to do so leads to very poor results).
 
-This is why we train this new architecture from scratch by using a SGD with a learning rate of 0.02. The results are shown in figure \ref{fig:cnn_adapted} with the previous results of ResNet34, which was the best model trained from scratch.
+This is why we train this new architecture from scratch by using a SGD with a learning rate of 0.02 (we use a higher learning rate for faster convergence). The results are shown in figure \ref{fig:cnn_adapted} with the previous results of ResNet34, which was the best model trained from scratch.
 
 \begin{figure}[h] 
 \centering
@@ -340,13 +370,15 @@ Unfortunately, it does not outperform the pre-trained MobileNet model. Besides, 
 
 Note that the adapted ResNet18 converges faster in figure \ref{fig:cnn_adapted} because a higher learning rate is used in the SGD.
 
+\subsubsection{Global Comparison}
+
 To conclude, we show the results of every model for the 28x28 grayscale bitmaps approach in table \ref{tab:cnn_every_results}. The model that performs best on our problem is the pre-trained, fine-tuned MobileNet.
 
 \begin{table}[h]
     \centering
     \begin{tabular}{c|c}
     \textbf{Model}                      & \textbf{Validation accuracy} \\
-    Logistic Regression                 & X\%                 \\
+    Logistic Regression                 & 28.84\%             \\
     MLP (from scratch)                  & 72.69\%             \\
     ResNet18 (from scratch)             & 83.08\%             \\
     ResNet34 (from scratch)             & 83.29\%             \\
@@ -362,7 +394,7 @@ To conclude, we show the results of every model for the 28x28 grayscale bitmaps 
 
 %------------------------------------------------------------------------
 \subsection{\imgenTitle{}}
-In this section we mostly use the same model as for the previous one with richer dataset to try and boost the validation accuracy.
+In this section we mostly use the same models as for the previous one with richer dataset to try and boost the validation accuracy.
 We can see that we consistently achieve better results using pretrained models so we choose to only use those. We focus on resnet18 and mobilenet.
 
 First we want to know if an increased resolution can boost the results. For this purpose, we use the drawing strokes to render 3x64x64 and 3x64x64 tensors and normalize the data using the mean and standard deviation from the pretrained model. The results of the resnet18 model for this approach are shown in figure \ref{fig:resnet_64_3k}.
@@ -376,7 +408,7 @@ First we want to know if an increased resolution can boost the results. For this
 \end{figure}
 
 
-We achieve a validation accuracy of 84.37\% which is on par with the same model trained on 28x28 images, though the total number of images was different: 20k vs 3k. This results are promising so we can try the same thing with more images.
+We achieve a validation accuracy of 84.37\% which is on par with the same model trained on 28x28 images, though the total number of images was different: 20k vs 3k. These results are promising so we can try the same thing with more images.
 
 \begin{figure}[h] 
 \centering
@@ -387,7 +419,7 @@ We achieve a validation accuracy of 84.37\% which is on par with the same model 
 
 This time we achieve a validation accuracy of 88.18\% on mobilenet and 87.64\% on resnet18 on 12k images and 89.55\% and 89.22\% on 34k images, as can be seen on figure \ref{fig:imgen_64}. We see that the results consistently improve as we add more images to train on, so we can safely say that training on 64x64 images yields better results than on the 28x28 ones. Indeed, with 3k images we already have the same results as with 20k previously.
 
-In the end we try increasing the resolution even further at 96x96, still with 34k images. The results on figure \ref{fig:imgen_96} show an even better validation accuracy of 90.10\% on mobilenet and 89.57\% on resnet18. Thus we can conclude than both the number of images and the resolution of such images is helping the results we can get on a given set of models.
+In the end, we try increasing the resolution even further at 96x96, still with 34k images. The results on figure \ref{fig:imgen_96} show an even better validation accuracy of 90.10\% on mobilenet and 89.57\% on resnet18. Thus we can conclude than both the number of images and the resolution of such images is helping the results we can get on a given set of models.
 
 \begin{figure}[h] 
 \centering
@@ -407,39 +439,44 @@ The results are displayed on table \ref{tab:final_results}.
     \centering
     \begin{tabular}{|c|c|c|c|c}
         \hline
-          Approach & Model Name & Test Accuracy  \\
+          \textbf{Approach} & \textbf{Model Name} & \textbf{Test Accuracy}  \\
           \hline\hline
-         RNNs on strokes & BiConvBiLSTM & $87.443\space \%$ \\
+         RNNs on strokes & BiConvBiLSTM & $87.44\space \%$ \\
           \hline
-         \multirow{1}{4em}{CNNs on 28x28 images} & CNN TODO & $TODO\space \%$ \\
-         & CNN TODO & $TODO\space \%$ \\
-         & CNN TODO & $TODO\space \%$ \\
+         \multirow{1}{4em}{CNNs on 28x28 images} & Fine-tuned ResNet34 & $84.62\space \%$ \\
+         & Fine-tuned MobileNet & $84.84\space \%$ \\
+         & Adapted ResNet34 & $84.12\space \%$ \\
           \hline
-         \multirow{4}{4em}{CNNs on generated images} & MobileNet on 64x64 images & $91.026\space \%$ \\
-         & MobileNet on 96x96 images & $92.176\space \%$ \\
-         & ResNet18 on 64x64 images & $92.179\space \%$ \\
-         & ResNet18 on 96x96 images & $92.435\space \%$ \\
+         \multirow{4}{4em}{CNNs on generated images} & MobileNet on 64x64 & $91.03\space \%$ \\
+         & MobileNet on 96x96 & $92.18\space \%$ \\
+         & ResNet18 on 64x64 & $92.18\space \%$ \\
+         & ResNet18 on 96x96 & $92.44\space \%$ \\
          \hline
     \end{tabular}
     \caption{Results of the best models on the test dataset}
     \label{tab:final_results}
 \end{table}
 
-TODO: comment table
+Of course, these results are not directly comparable as we don't use the same amount of data to train all these models. However, it should be stressed that there is a tradeoff to take into account between performance and training time. In particular, we never use the full dataset for the most complex models because of the time taken to train them, or because of practical issues such as the data size in memory.
+
+Even with a fair comparison though (see previous subsections), we can conclude that the third approach we tried, namely CNNs on generated images, yields the best performance for our classification task.
 
 %------------------------------------------------------------------------
 \section{Conclusion}
 
-This project allowed us to have a better understanding of Deep Learning architectures RNNs and CNNs and to apply them on a real-world case. Moreover, it greatly improved our knowledge of the pytorch deep learning framework which we based our study on.
+This project allowed us to have a better understanding of Deep Learning architectures such as RNNs and CNNs and to apply them on a real-world case. Moreover, it greatly improved our knowledge of the PyTorch deep learning framework which we based our study on.
 
 To improve our current results, we already have some leads that would be interesting to explore.
 
 First, we could try to tweak some hyper parameters of our trained models that we did not tinker with such as: learning rates, batch sizes, optimizers. For more specific improvements, for the LSTMs models we could use sliding windows instead of fixed padding / cropping to increase the number of samples available per class and hence be able to train models and more data.
 
-TODO: talk about progressive rescaling.
+We could try many more CNN models on generated images, for instance DenseNet, VGG, Inception, Se-Resnext.
 
-We could also use multiple models and make them vote as a group such as in an ensemble learning method, this would probably yields better results than using only one model. 
-Finally, training the best models on more data would surely yield much better performances ($75,000$ training images per class instead of $34,000$ for the ResNet18 on 96x96 generated images), however this will require much more computation capabilities and much more time to train.
+One idea that, had we had more time, we would have liked to explore is, for CNNs on generated images, the progressive resizing of all images while training the CNN, from smaller to bigger sizes. \cite{ProgressiveResizing} Empirically, this technique allows for better performance on some image recognition tasks.
+
+We could also use multiple models and make them vote as a group such as in an ensemble learning method, this would probably yield better results than using only one model.
+
+Finally, training the best models on more data would surely yield much better performances ($75,000$ training images per class instead of $34,000$ for the ResNet18 on 96x96 generated images), however this would require much more computation capabilities and much more time to train.
 
 {\small
 \bibliographystyle{ieee_fullname}
